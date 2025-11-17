@@ -3,7 +3,7 @@ import torch
 from sentence_transformers import SentenceTransformer
 import numpy as np
 
-model = SentenceTransformer('all-mpnet-base-v2')
+model = SentenceTransformer('BAAI/bge-base-en-v1.5')
 df = pd.read_json("data/dev_track_a.jsonl", lines=True)
 
 anchor_embeddings = model.encode(df["anchor_text"].tolist(), convert_to_tensor=True, show_progress_bar=True)
