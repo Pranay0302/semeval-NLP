@@ -6,13 +6,15 @@ We use a naive prompt for chatGPT.
 
 import random
 from enum import Enum
+import logging
 from openai import OpenAI
 import pandas as pd
 from pydantic import BaseModel
+import sys, os
 
 from cli import build_parser
+from log import setup_logging
 
-import torch
 from sentence_transformers import SentenceTransformer
 import numpy as np
 import tensorflow_hub as hub
@@ -103,7 +105,25 @@ def main():
     parser = build_parser("track_a")
     args = parser.parse_args()
     baseline = args.baseline
-    df = pd.read_json(args.input, lines=True)
+    if not os.path.exists(args.input):
+        logging.error(f"Input file does not exist: {args.input}")
+        sys.exit(2)  # Exit code 2: file not found
+    try:
+        df = pd.read_json(args.input, lines=True)
+        required_col = ["anchor_text", "text_a", "text_b", "text_a_is_closer"]
+        missing = [c for c in required_col if c not in df.columns]
+        if missing:
+            logging.error(f"Input file missing required columns: {missing}")
+            sys.exit(4)  # Exit code 4: missing columns
+    except ValueError as e:
+        logging.error(f"Failed to parse JSON: {e}")
+        sys.exit(3)  # Exit code 3: JSON parse error
+    _ = setup_logging(verbose=args.verbose, quiet=args.quiet, log_file=args.log_file)
+    logging.info("Starting Track A...")
+    logging.info(f"Baseline: {args.baseline}")
+    logging.info(f"Model: {args.model}")
+    logging.info(f"Embedding Dim: {args.embedding_dim}")
+    logging.info(f"Loaded {len(df)} rows from {args.input}")
 
     match baseline:
         case "openai":
@@ -116,17 +136,23 @@ def main():
         case "cosine":
             df["predicted_text_a_is_closer"] = cosine(df, args.model, args.embedding_dim)
         case _:
-            print(f"Error: Unknown Baseline {baseline}")
+            logging.error(f"Unknown baseline: {args.baseline}")
+            sys.exit(5)  # Exit code 5: Unknown baseline
 
     accuracy = (df["predicted_text_a_is_closer"] == df["text_a_is_closer"]).mean()
-    print(f"Accuracy: {accuracy:.3f}")
+    logging.info(f"Accuracy: {accuracy:.3f}")
 
     df["text_a_is_closer"] = df["predicted_text_a_is_closer"]
     del df["predicted_text_a_is_closer"]
 
     with open(args.output, "w") as f:
         f.write(df.to_json(orient='records', lines=True))
+    logging.info(f"Saved predictions to {args.output}")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        logging.exception(f"Unexpected error: {e}")
+        sys.exit(1)
