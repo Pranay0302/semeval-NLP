@@ -52,7 +52,7 @@ def build_parser(track: str):
 
     parser.add_argument("--log-file",
                         type=str,
-                        default=f"{track}.log",
+                        default=f"logs/{track}.log",
                         help="Path to log file (optional)")
 
     return parser

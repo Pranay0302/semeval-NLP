@@ -17,7 +17,6 @@ from log import setup_logging
 
 from sentence_transformers import SentenceTransformer
 import numpy as np
-import tensorflow_hub as hub
 
 
 class ResponseEnum(str, Enum):
@@ -51,8 +50,8 @@ def embeddings(model_name, texts, embedding_dim=None):
 
     # Universal Sentence Encoder
     if model_name == "use":
+        import tensorflow_hub as hub
         use_model = hub.load("https://tfhub.dev/google/universal-sentence-encoder/4")
-        # USE outputs TF tensors → convert to numpy
         return use_model(texts).numpy()
 
     raise ValueError(f"Unknown embedding model {model_name}")

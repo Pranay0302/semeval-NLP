@@ -2,6 +2,7 @@
 import logging
 import sys
 import time
+import os
 from tqdm import tqdm
 import json
 from logging.handlers import RotatingFileHandler
@@ -41,6 +42,11 @@ def setup_logging(verbose=False, quiet=False, log_file=None):
     logger.addHandler(ch)
 
     if log_file:
+        # Create logs directory if it doesn't exist
+        log_dir = os.path.dirname(log_file)
+        if log_dir and not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+        
         fh = RotatingFileHandler(log_file, maxBytes=5_000_000, backupCount=3)
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(formatter)
