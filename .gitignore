@@ -13,3 +13,4 @@ data/
 output/
 __pycache__/
 logs/
+venv/

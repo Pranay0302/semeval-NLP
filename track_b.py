@@ -28,6 +28,19 @@ def valid_file(path, required_col):
         sys.exit(3)  # Exit code 3: JSON parse error
 
 
+def generate_story_embedding(story_text, baseline, model=None):
+    match baseline:
+        case "random":
+            return torch.rand(512)
+        case "sbert":
+            if model is None:
+                raise ValueError("Model must be provided for sbert baseline")
+            # Encode single story - returns numpy array by default
+            return model.encode(story_text, show_progress_bar=False)
+        case _:
+            raise ValueError(f"Unknown baseline: {baseline}")
+
+
 def evaluate(labeled_data_path, embedding_lookup):
     df = valid_file(labeled_data_path, ["anchor_text", "text_a", "text_b", "text_a_is_closer"])
 
@@ -61,18 +74,31 @@ def main():
     logging.info(f"Embedding Dim: {args.embedding_dim}")
     logging.info(f"Loaded {len(df)} rows from {args.input}")
 
-    match baseline:
-        case "random":
-            embeddings = torch.rand((len(df), 512))
-        case "sbert":
-            real_name = args.model.split("sbert:")[1]
-            model = SentenceTransformer(real_name)
-            embeddings = model.encode(df["text"], show_progress_bar=True)
-        case _:
-            logging.error(f"Unknown baseline: {args.baseline}")
-            sys.exit(5)  # Exit code 5: Unknown baseline
-
-    embedding_lookup = dict(zip(df["text"], embeddings))
+    # Generate embeddings for each story individually
+    embedding_lookup = {}
+    model = None
+    
+    if baseline == "sbert":
+        real_name = args.model.split("sbert:")[1]
+        model = SentenceTransformer(real_name)
+    
+    logging.info("Generating embeddings for each story...")
+    for idx, story_text in enumerate(df["text"]):
+        embedding = generate_story_embedding(story_text, baseline, model)
+        embedding_lookup[story_text] = embedding
+        if (idx + 1) % 100 == 0:
+            logging.info(f"Processed {idx + 1}/{len(df)} stories")
+    
+    # Convert to numpy array for saving (maintaining original format)
+    # Handle both torch tensors (random) and numpy arrays (sbert)
+    embeddings_list = []
+    for text in df["text"]:
+        emb = embedding_lookup[text]
+        if isinstance(emb, torch.Tensor):
+            embeddings_list.append(emb.numpy())
+        else:
+            embeddings_list.append(emb)
+    embeddings = np.array(embeddings_list)
     accuracy = evaluate("data/dev_track_a.jsonl", embedding_lookup)
     logging.info(f"Accuracy: {accuracy:.3f}")
 
