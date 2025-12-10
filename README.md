@@ -49,13 +49,13 @@ To test using OpenAI prompting techniques or embeddings, you must add your API k
 To run the Track B baseline:
 
 ```bash
-python track_b.py
+python3 track_b.py
 ```
 
 This defaults to the random baseline. To use SBERT:
 
 ```bash
-python track_b.py --baseline sbert --model sbert:all-mpnet-base-v2
+python3 track_b.py --baseline sbert --model sbert:all-mpnet-base-v2
 ```
 
 ## Submission
